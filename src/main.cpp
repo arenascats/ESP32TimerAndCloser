@@ -34,12 +34,12 @@ Thread LED = Thread();
 Thread RGBLight = Thread();
 Thread cleaner = Thread();
 Thread BAT = Thread();
-void clearOLED();//清除OLED所有内容
+void clearOLED(); //清除OLED所有内容
 void led();
 void printStr(int line, String s);
 void printStr(int line, int num);
 void printStr(int line, int v, String s);
-void batteryCheck();//检查电池
+void batteryCheck(); //检查电池
 
 //---------------全局变量
 u8 m_color[5][3] = {{255, 0, 0}, {0, 255, 0}, {0, 0, 255}, {255, 255, 255}, {0, 0, 0}};
@@ -106,7 +106,7 @@ void printLocalTime()
   }
 
   u8g2.sendBuffer();
-  Serial.println(&timeinfo, "%H:%M:%S");
+ if(Serial.available()) Serial.println(&timeinfo, "%H:%M:%S");
 }
 
 void onButton()
@@ -148,7 +148,7 @@ void led()
     j = 0;
 }
 int temperature = 0;
-const char* weather;
+const char *weather;
 void getHttp() //TODO 获取http网页
 {
   DynamicJsonDocument doc(2048);
@@ -157,22 +157,21 @@ void getHttp() //TODO 获取http网页
   int httpCode = https.GET();
   u8g2.setFont(font1);
   u8g2.clear();
-    u8g2.setCursor(3, 50);
+  u8g2.setCursor(3, 50);
   if (httpCode > 0)
   {
-    
+
     u8g2.sendBuffer();
     String payload = https.getString();
-    deserializeJson(doc,payload);
+    deserializeJson(doc, payload);
     JsonObject results_0 = doc["results"][0];
     JsonObject results_0_now = results_0["now"];
     weather = results_0_now["text"];
     temperature = results_0_now["temperature"];
-    
   }
   else
   {
-    
+
     u8g2.print("Get http Failed");
     u8g2.sendBuffer();
     delay(1000);
@@ -180,24 +179,22 @@ void getHttp() //TODO 获取http网页
 }
 void printWeather()
 {
-  
-    u8g2.setDrawColor(0);
-    u8g2.drawBox(0, 33, 127, 32);
-    u8g2.setDrawColor(1);
-    u8g2.setCursor(35, 42);
-    u8g2.print(temperature);
-    //绘制温度符号
-    u8g2.drawCircle(58+4,32,2,U8G2_DRAW_ALL);
-    u8g2.setCursor(63+4, 42);
-    u8g2.print("C");
-    //绘制天气
-    u8g2.setFont(font1); 
-    u8g2.setCursor(5, 57);
-    u8g2.print(weather);
-    batteryCheck();
-   // u8g2.sendBuffer();
-    
-
+  int offset = 11;
+  u8g2.setDrawColor(0);
+  u8g2.drawBox(0, 33, 127, 32);
+  u8g2.setDrawColor(1);
+  u8g2.setCursor(35 - offset, 42);
+  u8g2.print(temperature);
+  //绘制温度符号
+  u8g2.drawCircle(58 - offset + 4, 32, 2, U8G2_DRAW_ALL);
+  u8g2.setCursor(63 - offset + 4, 42);
+  u8g2.print("C");
+  //绘制天气
+  u8g2.setFont(font1);
+  u8g2.setCursor(5, 57);
+  u8g2.print(weather);
+  batteryCheck();
+  // u8g2.sendBuffer();
 }
 //获取网上的时间
 void getNetTime()
@@ -219,13 +216,12 @@ void getNetTime()
   u8g2.setCursor(10, 48);
   u8g2.print("Get Time!"); //TODO 获取时间的提示
   // u8g2.sendBuffer();
-  
+
   printLocalTime();
   Serial.println(" CONNECTED");
-getHttp();
+  getHttp();
   WiFi.disconnect(true);
   WiFi.mode(WIFI_OFF);
-  
 }
 
 //动画数字效果
@@ -288,28 +284,54 @@ void clearHalf()
   u8g2.drawBox(0, 33, 127, 32);
 }
 //TODO ----------------绘制电池图标
+int lastbat = 0;
 void batteryCheck()
 {
 
   int x = 100;
   int y = 50;
   int offset = 5;
-  float vol=0;
-   u8g2.setCursor(x,y);
-   u8g2.drawFrame(x,y,20,12);
+  float vol = 0;
+  int volint = 0;
 
-   u8g2.drawFrame(x-3,y+3,3,5);
+  u8g2.setCursor(x, y);
+  u8g2.drawFrame(x, y, 20, 12);
 
-   //绘制电池电量的数值
-   u8g2.setCursor(x-4, y-5);
-    u8g2.setDrawColor(1);
-    u8g2.setFont(font1);
-    vol = (analogRead(32)/4096.0) * 100;
-    u8g2.print((int)vol+offset);
-u8g2.setCursor(x-4+17, y-5);
-    u8g2.print("%");
+  //绘制电池的正极
+  u8g2.drawFrame(x - 3, y + 3, 3, 6);
 
-   //u8g2.sendBuffer();
+  //绘制电池电量的数值
+  
+  vol = (analogRead(32) / 4096.0) * 100;
+  volint = (int)vol + offset;
+  if(volint>=100)
+  {
+    u8g2.setCursor(x - 4 - 8, y - 5);
+    volint = 100;
+  }
+  else
+  {
+    u8g2.setCursor(x - 4, y - 5);
+  }
+  u8g2.setDrawColor(1);
+  u8g2.setFont(font1);
+  //防抖
+  
+  if (abs(lastbat - (volint)) > 2)
+  {
+    u8g2.print(volint);
+    lastbat = volint;
+  }
+  else
+  {
+    u8g2.print(lastbat);
+  }
+
+  u8g2.setCursor(x - 4 + 17, y - 5);
+  u8g2.print("%");
+
+  //u8g2.drawBox(x+(analogRead(32) / 4096.0)*20, y+1, 20-(analogRead(32) / 4096.0)*20-1, 12-2);//绘制电池图标的电量
+  //u8g2.sendBuffer();
 }
 //TODO ----------------启动运行一次
 void setup()
@@ -331,14 +353,13 @@ void setup()
   // cleaner.onRun(clearHalf);
   // RGBLight.setInterval(500);
 
-
   u8g2.begin();
   u8g2.setFont(font1);                       // choose a suitable font
   u8g2.drawStr(128 / 9, 30, "Connecting.."); // write something to the internal memory
   u8g2.sendBuffer();                         // transfer internal memory to the display
 
   getNetTime();
-  
+
   // clearOLED();
 }
 
@@ -346,12 +367,12 @@ void setup()
 
 void loop()
 {
-  Serial.println("System run"); // if(LED.shouldRun())
+  //Serial.println("System run"); // if(LED.shouldRun())
   // LED.run();
   if (RGBLight.shouldRun())
     RGBLight.run();
   //if(BAT.shouldRun())
- //   BAT.run();
+  //   BAT.run();
 
   // if (digitalRead(KEY1) == LOW)
   // {
