@@ -80,3 +80,8 @@ double getSDPercent()
    SD.begin();
   return SD.usedBytes()/SD.totalBytes();
 }
+
+void sdend()
+{
+    SD.end();
+}
